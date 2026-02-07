@@ -1,0 +1,4 @@
+flask
+flask-cors
+playwright
+python-dotenv

@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Age Verification</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        :root {
+            --bg-color: #0b0c0f;
+            --surface-color: #14161a;
+            --surface-hover: #1c1f24;
+            --border-color: #333942;
+            --border-highlight: #5c6370;
+
+            --accent-color: #ffe600;
+            /* Endfield Yellow */
+            --accent-dim: #b3a200;
+            --accent-text: #000000;
+
+            --text-primary: #f0f0f0;
+            --text-secondary: #8b929e;
+            --text-tertiary: #5c6370;
+
+            --status-success: #4cd137;
+            --status-fail: #ff4757;
+            --status-pending: #8b929e;
+            --status-running: #ffe600;
+
+            --font-display: "Chakra Petch", sans-serif;
+            --font-mono: "IBM Plex Mono", monospace;
+
+            --corner-size: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Ambient structural elements */
+        body::before {
+            content: "SYSTEM // ONLINE";
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            bottom: 40px;
+            left: 20px;
+            width: 100px;
+            height: 2px;
+            background: var(--accent-color);
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            position: relative;
+            /* Industrial Cut Corners */
+            clip-path: polygon(0 0,
+                    100% 0,
+                    100% calc(100% - var(--corner-size)),
+                    calc(100% - var(--corner-size)) 100%,
+                    0 100%);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Decorative corner piece */
+        .container::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: var(--corner-size);
+            height: 2px;
+            background: var(--accent-color);
+            transform: rotate(45deg);
+            transform-origin: bottom right;
+        }
+
+        .header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .header-content h1 {
+            font-size: 32px;
+            margin: 0;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .header-content h1::before {
+            content: "PROJECT_";
+            font-size: 14px;
+            color: var(--accent-color);
+            display: block;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Language Switcher - Tactical Style */
+        .lang-switch {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            display: flex;
+            gap: 2px;
+            background: var(--border-color);
+            padding: 2px;
+        }
+
+        .lang-opt {
+            padding: 4px 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .lang-opt:hover {
+            color: var(--text-primary);
+        }
+
+        .lang-opt.active {
+            background-color: var(--accent-color);
+            color: var(--accent-text);
+            font-weight: 700;
+        }
+
+        /* Instructions Toggle */
+        .instruction-header {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+            display: inline-block;
+            border-bottom: 1px dashed transparent;
+        }
+
+        .instruction-header:hover {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .instructions {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-left: 2px solid var(--accent-color);
+            padding: 20px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 6px;
+        }
+
+        .instructions a {
+            color: var(--text-primary);
+            text-decoration: underline;
+            text-decoration-color: var(--accent-color);
+            text-underline-offset: 4px;
+        }
+
+        .instructions a:hover {
+            color: var(--accent-color);
+        }
+
+        /* Mode Switcher */
+        .mode-switch {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            padding: 12px 24px;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            top: 1px;
+            /* Overlap border */
+        }
+
+        .mode-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .mode-btn.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .mode-btn.active::before {
+            content: "[";
+            margin-right: 5px;
+            opacity: 0.5;
+        }
+
+        .mode-btn.active::after {
+            content: "]";
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+
+        /* Inputs */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            /* Strict square corners */
+            padding: 16px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            border-color: var(--accent-color);
+            background: rgba(255, 230, 0, 0.02);
+            box-shadow: 0 0 15px rgba(255, 230, 0, 0.05);
+        }
+
+        .url-count {
+            text-align: right;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 8px;
+        }
+
+        /* CTA Button */
+        button {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: var(--accent-text);
+            border: none;
+            padding: 18px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 16px;
+            text-transform: uppercase;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            clip-path: polygon(0 0,
+                    100% 0,
+                    100% calc(100% - 8px),
+                    calc(100% - 8px) 100%,
+                    0 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 230, 0, 0.2);
+            background-color: #fff033;
+            /* Slightly lighter yellow */
+        }
+
+        button:disabled {
+            background-color: var(--border-color);
+            color: var(--text-tertiary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Status Display */
+        .status-display {
+            margin-top: 30px;
+            padding: 24px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+            position: relative;
+        }
+
+        /* Tactical corner markers for status */
+        .status-display::before,
+        .status-display::after {
+            content: "";
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 1px solid var(--text-tertiary);
+            transition: all 0.3s;
+        }
+
+        .status-display::before {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .status-display::after {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+
+        .status-text {
+            font-size: 20px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-detail {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .status-output-note {
+            margin-top: 10px;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-tertiary);
+            line-height: 1.5;
+        }
+
+        /* Colors for states */
+        .color-pending {
+            color: var(--text-tertiary);
+        }
+
+        .color-running {
+            color: var(--accent-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        .color-success {
+            color: var(--status-success);
+        }
+
+        .color-failed {
+            color: var(--status-fail);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        /* Utilities */
+        .hidden {
+            display: none !important;
+        }
+
+        .single-input-area {
+            display: block;
+        }
+
+        .single-input-area.hidden {
+            display: none !important;
+        }
+
+        .batch-input-area {
+            display: none;
+        }
+
+        .batch-input-area.active {
+            display: block;
+        }
+
+        /* Batch Progress Elements */
+        .batch-results {
+            display: none;
+            margin-top: 24px;
+        }
+
+        .batch-results.active {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .progress-bar-container {
+            height: 4px;
+            background: var(--border-color);
+            width: 100%;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .progress-bar {
+            background: var(--accent-color);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 230, 0, 0.3);
+        }
+
+        .batch-stats {
+            display: none;
+            gap: 16px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+        }
+
+        .batch-stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .batch-stat-item span:first-child {
+            /* Dot styling */
+            width: 6px;
+            height: 6px;
+            background: currentColor;
+            display: inline-block;
+        }
+
+        /* Task List */
+        .task-list {
+            display: none;
+        }
+
+        /* Custom Scrollbar for Webkit */
+        .task-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .task-list::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        .task-list::-webkit-scrollbar-thumb {
+            background: var(--border-highlight);
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-url {
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+
+        .task-status {
+            text-transform: uppercase;
+            font-size: 10px;
+            padding: 2px 6px;
+            border: 1px solid transparent;
+        }
+
+        .task-status.pending {
+            color: var(--status-pending);
+            border-color: var(--border-color);
+        }
+
+        .task-status.running {
+            color: var(--accent-color);
+            border-color: var(--accent-dim);
+        }
+
+        .task-status.completed {
+            color: var(--status-success);
+            border-color: var(--status-success);
+        }
+
+        .task-status.failed {
+            color: var(--status-fail);
+            border-color: var(--status-fail);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header-content h1 {
+                font-size: 24px;
+            }
+
+            button {
+                padding: 14px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1 data-i18n="title">Google Age Verification</h1>
+                <div class="subtitle" data-i18n="subtitle">Automated Verification Tool</div>
+            </div>
+            <div class="lang-switch">
+                <span id="lang-en" class="lang-opt active" onclick="setLanguage('en')">EN</span> /
+                <span id="lang-cn" class="lang-opt" onclick="setLanguage('cn')">CN</span>
+            </div>
+        </div>
+
+        <div class="instruction-header" onclick="toggleInstructions()">
+            <span data-i18n="toggle_help">[-] Instructions</span>
+        </div>
+
+        <div id="instructions" class="instructions">
+            <ol>
+                <li data-i18n="help_step1">Log in to your Google account.</li>
+                <li data-i18n="help_step2">Visit <a
+                        href="https://myaccount.google.com/age-verification/selfie/privateid/init?hl=en&utm_source=p0"
+                        target="_blank">Google Age Verification Page</a>.</li>
+                <li data-i18n="help_step3">On the verification page, click the copy-link next to the QR code and paste
+                    that link below. Do NOT use the URL from the top browser address bar.</li>
+            </ol>
+        </div>
+
+        <!-- 模式切换按钮 -->
+        <div class="mode-switch">
+            <button id="singleModeBtn" class="mode-btn active" onclick="switchMode('single')"
+                data-i18n="mode_single">Single</button>
+            <button id="batchModeBtn" class="mode-btn" onclick="switchMode('batch')"
+                data-i18n="mode_batch">Batch</button>
+        </div>
+
+        <!-- 单个验证输入区域 -->
+        <div id="singleInputArea" class="form-group single-input-area">
+            <input type="text" id="urlInput" placeholder="Paste verification link here..." autocomplete="off"
+                data-i18n-placeholder="placeholder">
+        </div>
+
+        <!-- 批量验证输入区域 -->
+        <div id="batchInputArea" class="form-group batch-input-area">
+            <textarea id="batchUrlInput" placeholder="Paste multiple links here, one per line..."
+                data-i18n-placeholder="placeholder_batch" oninput="updateUrlCount()"></textarea>
+            <div id="urlCount" class="url-count">0 <span data-i18n="links_count">links</span></div>
+        </div>
+
+        <!-- Cloudflare Turnstile Widget -->
+        <!-- Replace data-sitekey with your own key from Cloudflare Dashboard -->
+        <!-- <div class="cf-turnstile" data-sitekey="YOUR_SITE_KEY" data-theme="dark"></div> -->
+        <!-- <div style="margin-bottom: 20px;"></div> -->
+
+        <button id="submitBtn" onclick="startVerification()" data-i18n="btn_init">Start Verification</button>
+
+        <div class="status-display" id="singleStatusDisplay">
+            <div id="statusText" class="status-text color-pending" data-i18n="status_ready">Ready</div>
+            <div id="statusDetail" class="status-detail" data-i18n="detail_ready">Please enter the verification link
+                above.</div>
+        </div>
+        <div class="status-output-note" data-i18n="output_note">Visible output: Ready / Queued / Running / Success / Failed. Only current status is shown.</div>
+
+        <!-- 批量验证结果展示区域 -->
+        <div id="batchResults" class="batch-results">
+            <div class="batch-progress">
+                <div class="progress-header">
+                    <span id="batchProgressText" data-i18n="batch_progress">Progress</span>
+                    <span id="batchProgressPercent">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="batchProgressBar" class="progress-bar"></div>
+                </div>
+                <div class="batch-stats">
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-dot dot-success"></span>
+                        <span data-i18n="batch_success">Success:</span>
+                        <span id="batchSuccessCount">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-dot dot-failed"></span>
+                        <span data-i18n="batch_failed">Failed:</span>
+                        <span id="batchFailedCount">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-dot dot-running"></span>
+                        <span data-i18n="batch_running">Running:</span>
+                        <span id="batchRunningCount">0</span>
+                    </div>
+                    <div class="batch-stat-item">
+                        <span class="batch-stat-dot dot-pending"></span>
+                        <span data-i18n="batch_pending">Pending:</span>
+                        <span id="batchPendingCount">0</span>
+                    </div>
+                </div>
+            </div>
+            <div id="taskList" class="task-list"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div><span data-i18n="footer_status">System Status:</span> <span class="color-success"
+                data-i18n="footer_online">Online</span></div>
+        <div class="stat-box">
+            <div><span data-i18n="footer_total">Total Successful:</span> <span id="totalSuccess"
+                    class="stat-value">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL - 留空则使用当前域名
+        const API_BASE_URL = '';
+
+        const translations = {
+            'en': {
+                'title': 'Google Age Verification',
+                'subtitle': 'Automated Verification Tool',
+                'placeholder': 'Paste verification link here...',
+                'placeholder_batch': 'Paste multiple links here, one per line...',
+                'btn_init': 'Start Verification',
+                'btn_processing': 'Processing...',
+                'btn_retry': 'Retry',
+                'status_ready': 'Ready',
+                'detail_ready': 'Please enter the verification link above.',
+                'status_init': 'Starting...',
+                'detail_init': 'Submitting task...',
+                'status_running': 'Running',
+                'status_success': 'Success',
+                'status_failed': 'Failed',
+                'status_error': 'Error',
+                'footer_status': 'System Status:',
+                'footer_online': 'Online',
+                'footer_total': 'Total Successful:',
+                'alert_link_req': 'Please enter a link.',
+                'alert_invalid': 'Invalid link format. Must start with http.',
+                'task_created': 'Task created, waiting for results...',
+                'detail_success': 'Verification completed successfully.',
+                'detail_fail': 'Verification failed.',
+                'detail_queue': 'Task queued. Waiting for available worker...',
+                'detail_running_simple': 'Verification in progress. Please keep this page open.',
+                'toggle_help': '[-] Instructions',
+                'toggle_help_hide': '[+] Show Instructions',
+                'help_step1': 'Log in to your Google account.',
+                'help_step2': 'Visit <a href="https://myaccount.google.com/age-verification/selfie/privateid/init?hl=en&utm_source=p0" target="_blank">Google Age Verification Page</a>.',
+                'help_step3': 'On the verification page, click the copy-link next to the QR code and paste that link below. Do NOT use the URL from the top browser address bar.',
+                'alert_auth_fail': 'Authentication failed. Please check Access Code.',
+                'mode_single': 'Single',
+                'mode_batch': 'Batch',
+                'links_count': 'links',
+                'batch_progress': 'Progress',
+                'batch_success': 'Success:',
+                'batch_failed': 'Failed:',
+                'batch_running': 'Running:',
+                'batch_pending': 'Pending:',
+                'alert_batch_empty': 'Please enter at least one link.',
+                'alert_batch_max': 'Maximum 6 links allowed.',
+                'batch_created': 'Batch task created',
+                'batch_complete': 'Batch verification complete',
+                'btn_batch_init': 'Start Batch Verification',
+                'output_note': 'Visible output: Ready / Queued / Running / Success / Failed. Only current status is shown.'
+            },
+            'cn': {
+                'title': 'Google 年龄验证',
+                'subtitle': '自动化验证工具',
+                'placeholder': '在此处粘贴验证链接...',
+                'placeholder_batch': '在此处粘贴多个链接，每行一个...',
+                'btn_init': '开始验证',
+                'btn_processing': '处理中...',
+                'btn_retry': '重试',
+                'status_ready': '准备就绪',
+                'detail_ready': '请在上方输入验证链接。',
+                'status_init': '正在启动...',
+                'detail_init': '正在提交任务...',
+                'status_running': '运行中',
+                'status_success': '验证成功',
+                'status_failed': '验证失败',
+                'status_error': '系统错误',
+                'footer_status': '系统状态:',
+                'footer_online': '在线',
+                'footer_total': '累计成功:',
+                'alert_link_req': '请输入链接。',
+                'alert_invalid': '无效的链接格式，必须以 http 开头。',
+                'task_created': '任务已创建，等待结果...',
+                'detail_success': '验证已成功完成。',
+                'detail_fail': '验证失败。',
+                'detail_queue': '任务排队中，正在等待可用执行位...',
+                'detail_running_simple': '验证进行中，请保持页面开启。',
+                'toggle_help': '[-] 使用说明',
+                'toggle_help_hide': '[+] 显示说明',
+                'help_step1': '登录您的 Google 账号。',
+                'help_step2': '访问 <a href="https://myaccount.google.com/age-verification/selfie/privateid/init?hl=zh-CN&utm_source=p0" target="_blank">Google 年龄验证页面</a>。',
+                'help_step3': '进入验证页面后，请点击二维码旁边的“复制链接”按钮并粘贴到下方；不要使用浏览器顶部导航栏里的 URL。',
+                'alert_auth_fail': '认证失败，请检查访问密钥。',
+                'mode_single': '单个验证',
+                'mode_batch': '批量验证',
+                'links_count': '个链接',
+                'batch_progress': '进度',
+                'batch_success': '成功:',
+                'batch_failed': '失败:',
+                'batch_running': '运行中:',
+                'batch_pending': '等待中:',
+                'alert_batch_empty': '请至少输入一个链接。',
+                'alert_batch_max': '最多支持6个链接。',
+                'batch_created': '批量任务已创建',
+                'batch_complete': '批量验证完成',
+                'btn_batch_init': '开始批量验证',
+                'output_note': '可见输出：准备就绪 / 排队中 / 验证中 / 成功 / 失败。页面仅显示当前状态。'
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleInstructions() {
+            const el = document.getElementById('instructions');
+            const btn = document.querySelector('.instruction-header span');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                btn.setAttribute('data-i18n', 'toggle_help');
+                btn.innerText = translations[currentLang]['toggle_help'];
+            } else {
+                el.style.display = 'none';
+                btn.setAttribute('data-i18n', 'toggle_help_hide');
+                btn.innerText = translations[currentLang]['toggle_help_hide'];
+            }
+        }
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+
+            document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active'));
+            document.getElementById(`lang-${lang}`).classList.add('active');
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    // 对包含 HTML 的翻译使用 innerHTML
+                    if (key.startsWith('help_step')) {
+                        el.innerHTML = translations[lang][key];
+                    } else {
+                        el.innerText = translations[lang][key];
+                    }
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (translations[lang][key]) {
+                    el.placeholder = translations[lang][key];
+                }
+            });
+
+            const btn = document.getElementById('submitBtn');
+            if (!btn.disabled) {
+                if (btn.innerText === "Retry" || btn.innerText === "重试") {
+                    btn.innerText = translations[lang]['btn_retry'];
+                } else {
+                    btn.innerText = translations[lang]['btn_init'];
+                }
+            }
+        }
+
+        function detectLanguage() {
+            const userLang = navigator.language || navigator.userLanguage;
+            if (userLang.includes('zh')) {
+                setLanguage('cn');
+            } else {
+                setLanguage('en');
+            }
+        }
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        let clientToken = '';
+        let clientTokenExpireAt = 0;
+
+        function isLikelyLocalHost() {
+            const host = (window.location.hostname || '').toLowerCase();
+            return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        }
+
+        function clearClientTokenCache() {
+            clientToken = '';
+            clientTokenExpireAt = 0;
+        }
+
+        async function ensureClientToken(turnstileToken = null) {
+            if (isLikelyLocalHost()) return '';
+
+            const now = Math.floor(Date.now() / 1000);
+            if (clientToken && clientTokenExpireAt - now > 30) {
+                return clientToken;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/auth/client-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ turnstile_token: turnstileToken || null })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to obtain client token');
+            }
+            clientToken = data.token || '';
+            clientTokenExpireAt = now + (data.expires_in || 0);
+            return clientToken;
+        }
+
+        async function getHeaders(options = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = await ensureClientToken(options.turnstileToken || null);
+            if (token) headers['X-Client-Token'] = token;
+            return headers;
+        }
+
+        function updateStats() {
+            getHeaders()
+                .then(headers => fetch(`${API_BASE_URL}/stats`, { headers }))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('totalSuccess').innerText = data.stats.total_success;
+                    }
+                })
+                .catch(e => console.error("Stats error", e));
+        }
+
+        updateStats();
+        detectLanguage();
+        setInterval(updateStats, 30000);
+
+        let singlePollingTimer = null;
+        let batchPollingTimer = null;
+        let pollSessionId = 0;
+
+        function resetPolling() {
+            pollSessionId += 1;
+            if (singlePollingTimer) {
+                clearTimeout(singlePollingTimer);
+                singlePollingTimer = null;
+            }
+            if (batchPollingTimer) {
+                clearTimeout(batchPollingTimer);
+                batchPollingTimer = null;
+            }
+        }
+
+        async function pollStatus(taskId, sessionId = pollSessionId) {
+            if (sessionId !== pollSessionId) {
+                return;
+            }
+            const statusDetail = document.getElementById('statusDetail');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, { headers: await getHeaders() });
+                if (response.status === 401) {
+                    clearClientTokenCache();
+                    throw new Error(t('alert_auth_fail'));
+                }
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error("Status query failed");
+                }
+
+                const task = data.task;
+                const status = task.status;
+
+                if (status === 'pending') {
+                    statusDetail.innerText = t('detail_queue');
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                } else if (status === 'running') {
+                    statusDetail.innerText = t('detail_running_simple');
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                } else if (status === 'completed') {
+                    const success = task.result && task.result.success;
+                    handleCompletion(success, task.result ? task.result.message : "Completed");
+                    if (success) updateStats();
+                } else if (status === 'failed') {
+                    handleError(task.error || "Unknown system failure");
+                } else if (status === 'cancelled') {
+                    handleError("Task terminated manually");
+                } else {
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                }
+
+            } catch (error) {
+                console.error(error);
+                singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 2000);
+            }
+        }
+
+        function handleCompletion(success, message) {
+            if (singlePollingTimer) {
+                clearTimeout(singlePollingTimer);
+                singlePollingTimer = null;
+            }
+            const btn = document.getElementById('submitBtn');
+            const urlInput = document.getElementById('urlInput');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            btn.disabled = false;
+            btn.innerText = t('btn_init');
+            urlInput.disabled = false;
+            urlInput.value = "";
+
+            if (success) {
+                statusText.innerText = t('status_success');
+                statusText.className = "status-text color-success";
+                statusDetail.innerText = t('detail_success');
+            } else {
+                statusText.innerText = t('status_failed');
+                statusText.className = "status-text color-failed";
+                statusDetail.innerText = message || t('detail_fail');
+            }
+        }
+
+        function handleError(msg) {
+            if (singlePollingTimer) {
+                clearTimeout(singlePollingTimer);
+                singlePollingTimer = null;
+            }
+            const btn = document.getElementById('submitBtn');
+            const urlInput = document.getElementById('urlInput');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            statusText.innerText = t('status_error');
+            statusText.className = "status-text color-failed";
+            statusDetail.innerText = msg;
+
+            btn.disabled = false;
+            btn.innerText = t('btn_retry');
+            urlInput.disabled = false;
+        }
+
+        // ============================================================================
+        // 批量验证功能
+        // ============================================================================
+
+        let currentMode = 'single';
+        let currentBatchId = null;
+
+        function switchMode(mode) {
+            resetPolling();
+            currentMode = mode;
+            const singleModeBtn = document.getElementById('singleModeBtn');
+            const batchModeBtn = document.getElementById('batchModeBtn');
+            const singleInputArea = document.getElementById('singleInputArea');
+            const batchInputArea = document.getElementById('batchInputArea');
+            const singleStatusDisplay = document.getElementById('singleStatusDisplay');
+            const batchResults = document.getElementById('batchResults');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (mode === 'single') {
+                singleModeBtn.classList.add('active');
+                batchModeBtn.classList.remove('active');
+                singleInputArea.classList.remove('hidden');
+                batchInputArea.classList.remove('active');
+                singleStatusDisplay.style.display = 'flex';
+                batchResults.classList.remove('active');
+                submitBtn.innerText = t('btn_init');
+            } else {
+                singleModeBtn.classList.remove('active');
+                batchModeBtn.classList.add('active');
+                singleInputArea.classList.add('hidden');
+                batchInputArea.classList.add('active');
+                singleStatusDisplay.style.display = 'none';
+                submitBtn.innerText = t('btn_batch_init');
+            }
+        }
+
+        function updateUrlCount() {
+            const textarea = document.getElementById('batchUrlInput');
+            const countEl = document.getElementById('urlCount');
+            const urls = parseUrls(textarea.value);
+            countEl.innerHTML = `${urls.length} <span data-i18n="links_count">${t('links_count')}</span>`;
+        }
+
+        function parseUrls(text) {
+            return text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.startsWith('http'));
+        }
+
+        async function startVerification() {
+            resetPolling();
+            if (currentMode === 'batch') {
+                await startBatchVerification();
+            } else {
+                await startSingleVerification();
+            }
+        }
+
+        async function startSingleVerification() {
+            const urlInput = document.getElementById('urlInput');
+            const btn = document.getElementById('submitBtn');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                alert(t('alert_link_req'));
+                return;
+            }
+
+            if (!url.startsWith('http')) {
+                alert(t('alert_invalid'));
+                return;
+            }
+
+            // Get Turnstile token if widget exists
+            let turnstileToken = null;
+            try {
+                const widget = document.querySelector('.cf-turnstile');
+                if (widget && window.turnstile) {
+                    turnstileToken = window.turnstile.getResponse();
+                    if (!turnstileToken) {
+                        alert("Please complete the CAPTCHA check / 请完成人机验证");
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log("Turnstile check skipped", e);
+            }
+
+            btn.disabled = true;
+            btn.innerText = t('btn_processing');
+            urlInput.disabled = true;
+
+            statusText.innerText = t('status_init');
+            statusText.className = "status-text color-running";
+            statusDetail.innerText = t('detail_init');
+
+            try {
+                const config = {
+                    url: url,
+                    timeout: 300,
+                    async: true,
+                    turnstile_token: turnstileToken
+                };
+
+                const response = await fetch(`${API_BASE_URL}/verify`, {
+                    method: 'POST',
+                    headers: await getHeaders({ turnstileToken }),
+                    body: JSON.stringify(config)
+                });
+
+                if (response.status === 401) {
+                    clearClientTokenCache();
+                    throw new Error(t('alert_auth_fail'));
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const taskId = data.task_id;
+                    statusText.innerText = t('status_running');
+                    statusDetail.innerText = t('detail_queue');
+                    const sessionId = pollSessionId;
+                    pollStatus(taskId, sessionId);
+                } else {
+                    throw new Error(data.error || "Failed to create task");
+                }
+
+            } catch (error) {
+                handleError(error.message);
+            }
+        }
+
+        async function startBatchVerification() {
+            const textarea = document.getElementById('batchUrlInput');
+            const btn = document.getElementById('submitBtn');
+            const batchResults = document.getElementById('batchResults');
+
+            const urls = parseUrls(textarea.value);
+
+            if (urls.length === 0) {
+                alert(t('alert_batch_empty'));
+                return;
+            }
+
+            if (urls.length > 6) {
+                alert(t('alert_batch_max'));
+                return;
+            }
+
+            // Get Turnstile token if widget exists
+            let turnstileToken = null;
+            try {
+                const widget = document.querySelector('.cf-turnstile');
+                if (widget && window.turnstile) {
+                    turnstileToken = window.turnstile.getResponse();
+                    if (!turnstileToken) {
+                        alert("Please complete the CAPTCHA check / 请完成人机验证");
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log("Turnstile check skipped", e);
+            }
+
+            btn.disabled = true;
+            btn.innerText = t('btn_processing');
+            textarea.disabled = true;
+
+            // 显示批量结果区域
+            batchResults.classList.add('active');
+            resetBatchUI();
+
+            try {
+                const config = {
+                    urls: urls,
+                    timeout: 300,
+                    max_concurrent: 3,
+                    turnstile_token: turnstileToken
+                };
+
+                const response = await fetch(`${API_BASE_URL}/verify/batch`, {
+                    method: 'POST',
+                    headers: await getHeaders({ turnstileToken }),
+                    body: JSON.stringify(config)
+                });
+
+                if (response.status === 401) {
+                    clearClientTokenCache();
+                    throw new Error(t('alert_auth_fail'));
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentBatchId = data.batch_id;
+                    // 开始轮询批量状态
+                    const sessionId = pollSessionId;
+                    pollBatchStatus(data.batch_id, sessionId);
+                } else {
+                    throw new Error(data.error || "Failed to create batch task");
+                }
+
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerText = t('btn_batch_init');
+                textarea.disabled = false;
+                alert(error.message);
+            }
+        }
+
+        function resetBatchUI() {
+            document.getElementById('batchProgressText').innerText = t('batch_progress');
+            document.getElementById('batchProgressBar').style.width = '0%';
+            document.getElementById('batchProgressPercent').innerText = '0%';
+            document.getElementById('batchSuccessCount').innerText = '0';
+            document.getElementById('batchFailedCount').innerText = '0';
+            document.getElementById('batchRunningCount').innerText = '0';
+            document.getElementById('batchPendingCount').innerText = '0';
+            document.getElementById('taskList').innerHTML = '';
+        }
+
+        function initTaskList(urls) { }
+
+        async function pollBatchStatus(batchId, sessionId = pollSessionId) {
+            if (sessionId !== pollSessionId) {
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/batches/${batchId}`, {
+                    headers: await getHeaders()
+                });
+
+                if (response.status === 401) {
+                    clearClientTokenCache();
+                    throw new Error(t('alert_auth_fail'));
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error("Failed to get batch status");
+                }
+
+                // 更新进度条
+                const percent = data.progress_percent || 0;
+                document.getElementById('batchProgressBar').style.width = `${percent}%`;
+                document.getElementById('batchProgressPercent').innerText = `${percent}%`;
+                document.getElementById('batchProgressText').innerText = `${t('batch_progress')}: ${data.completed}/${data.total}`;
+
+                // 仅展示当前状态，不展示任务明细列表
+
+                // 检查是否完成
+                if (data.is_finished) {
+                    handleBatchCompletion(data);
+                } else {
+                    batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), 1500);
+                }
+
+            } catch (error) {
+                console.error("Batch status error:", error);
+                batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), 3000);
+            }
+        }
+
+        function updateTaskList(tasks) { }
+
+        function handleBatchCompletion(data) {
+            const btn = document.getElementById('submitBtn');
+            const textarea = document.getElementById('batchUrlInput');
+
+            btn.disabled = false;
+            btn.innerText = t('btn_batch_init');
+            textarea.disabled = false;
+            textarea.value = '';
+            updateUrlCount();
+
+            // 更新全局统计
+            updateStats();
+
+            // 清除轮询
+            if (batchPollingTimer) {
+                clearTimeout(batchPollingTimer);
+                batchPollingTimer = null;
+            }
+
+            currentBatchId = null;
+        }
+    </script>
+</body>
+
+</html>

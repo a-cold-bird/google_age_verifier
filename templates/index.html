@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Age Verification</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaa; /* Lighter secondary text */
+            --accent-color: #f7d000;
+            --accent-hover: #e5c100;
+            --border-color: #333;
+            --status-success: #4caf50;
+            --status-fail: #f44336;
+            --font-mono: "Menlo", "Consolas", "Monaco", monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px; /* Slightly wider */
+            padding: 40px;
+            box-sizing: border-box;
+            background-color: #181818; /* Card background */
+            border: 1px solid #333;
+            border-radius: 8px; /* Softer corners */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .header-content h1 {
+            font-family: var(--font-sans); /* Use sans-serif for title */
+            font-size: 24px;
+            margin: 0;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .lang-switch {
+            font-family: var(--font-sans);
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            background: #252525;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .lang-opt {
+            transition: color 0.2s;
+        }
+
+        .lang-opt:hover {
+            color: var(--text-primary);
+        }
+
+        .lang-opt.active {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .instruction-header {
+            font-size: 14px;
+            color: var(--accent-color);
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .instruction-header:hover {
+            text-decoration: underline;
+        }
+
+        .instructions {
+            display: block; /* Default open */
+            background-color: #252525; /* Distinct background */
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.6;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .instructions a {
+            color: #64b5f6; /* Link color */
+            text-decoration: none;
+        }
+
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: #2a2a2a; /* Visible input field */
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-family: var(--font-mono); /* Keep URL mono */
+            font-size: 14px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        input[type="text"]::placeholder {
+            color: #666;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            border-radius: 4px; /* Standard button */
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            background-color: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .status-display {
+            margin-top: 30px;
+            padding: 20px;
+            background: #111;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+
+        .status-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .status-detail {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding: 20px;
+            width: 100%;
+            max-width: 700px;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .stat-value {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        /* 状态颜色 */
+        .color-pending { color: var(--text-secondary); }
+        .color-running { color: var(--accent-color); }
+        .color-success { color: var(--status-success); }
+        .color-failed { color: var(--status-fail); }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1 data-i18n="title">Google Age Verification</h1>
+                <div class="subtitle" data-i18n="subtitle">Automated Verification Tool</div>
+            </div>
+            <div class="lang-switch">
+                <span id="lang-en" class="lang-opt active" onclick="setLanguage('en')">EN</span> /
+                <span id="lang-cn" class="lang-opt" onclick="setLanguage('cn')">CN</span>
+            </div>
+        </div>
+
+        <div class="instruction-header" onclick="toggleInstructions()">
+            <span data-i18n="toggle_help">[-] Instructions</span>
+        </div>
+
+        <div id="instructions" class="instructions">
+            <ol>
+                <li data-i18n="help_step1">Log in to your Google account.</li>
+                <li data-i18n="help_step2">Visit <a href="https://myaccount.google.com/age-verification/selfie/privateid/init?hl=en&utm_source=p0" target="_blank">Google Age Verification Page</a>.</li>
+                <li data-i18n="help_step3">Copy the redirected URL (starts with https://age-verification.privateid.com) and paste it below.</li>
+            </ol>
+        </div>
+
+        <div class="form-group">
+            <input type="text" id="urlInput" placeholder="Paste verification link here..." autocomplete="off" data-i18n-placeholder="placeholder">
+        </div>
+
+        <button id="submitBtn" onclick="startVerification()" data-i18n="btn_init">Start Verification</button>
+
+        <div class="status-display">
+            <div id="statusText" class="status-text color-pending" data-i18n="status_ready">Ready</div>
+            <div id="statusDetail" class="status-detail" data-i18n="detail_ready">Please enter the verification link above.</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div><span data-i18n="footer_status">System Status:</span> <span style="color:#4caf50" data-i18n="footer_online">Online</span></div>
+        <div class="stat-box">
+            <div><span data-i18n="footer_total">Total Successful:</span> <span id="totalSuccess" class="stat-value">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // 国际化配置
+        const translations = {
+            'en': {
+                'title': 'Google Age Verification',
+                'subtitle': 'Automated Verification Tool',
+                'placeholder': 'Paste verification link here...',
+                'btn_init': 'Start Verification',
+                'btn_processing': 'Processing...',
+                'btn_retry': 'Retry',
+                'status_ready': 'Ready',
+                'detail_ready': 'Please enter the verification link above.',
+                'status_init': 'Starting...',
+                'detail_init': 'Submitting task...',
+                'status_running': 'Running',
+                'status_success': 'Success',
+                'status_failed': 'Failed',
+                'status_error': 'Error',
+                'footer_status': 'System Status:',
+                'footer_online': 'Online',
+                'footer_total': 'Total Successful:',
+                'alert_link_req': 'Please enter a link.',
+                'alert_invalid': 'Invalid link format. Must start with http.',
+                'task_created': 'Task created, waiting for results...',
+                'detail_success': 'Verification completed successfully.',
+                'detail_fail': 'Verification failed.',
+                'toggle_help': '[-] Instructions',
+                'toggle_help_hide': '[+] Show Instructions',
+                'help_step1': 'Log in to your Google account.',
+                'help_step2': 'Visit the Google Age Verification Page (click here).',
+                'help_step3': 'Copy the redirected URL (starts with https://age-verification.privateid.com) and paste it below.'
+            },
+            'cn': {
+                'title': 'Google 年龄验证',
+                'subtitle': '自动化验证工具',
+                'placeholder': '在此处粘贴验证链接...',
+                'btn_init': '开始验证',
+                'btn_processing': '处理中...',
+                'btn_retry': '重试',
+                'status_ready': '准备就绪',
+                'detail_ready': '请在上方输入验证链接。',
+                'status_init': '正在启动...',
+                'detail_init': '正在提交任务...',
+                'status_running': '运行中',
+                'status_success': '验证成功',
+                'status_failed': '验证失败',
+                'status_error': '系统错误',
+                'footer_status': '系统状态:',
+                'footer_online': '在线',
+                'footer_total': '累计成功:',
+                'alert_link_req': '请输入链接。',
+                'alert_invalid': '无效的链接格式，必须以 http 开头。',
+                'task_created': '任务已创建，等待结果...',
+                'detail_success': '验证已成功完成。',
+                'detail_fail': '验证失败。',
+                'toggle_help': '[-] 使用说明',
+                'toggle_help_hide': '[+] 显示说明',
+                'help_step1': '登录您的 Google 账号。',
+                'help_step2': '访问 Google 年龄验证页面（点击此处）。',
+                'help_step3': '复制跳转后的链接（以 https://age-verification.privateid.com 开头）并粘贴到下方。'
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleInstructions() {
+            const el = document.getElementById('instructions');
+            const btn = document.querySelector('.instruction-header span');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                btn.setAttribute('data-i18n', 'toggle_help');
+                btn.innerText = translations[currentLang]['toggle_help'];
+            } else {
+                el.style.display = 'none';
+                btn.setAttribute('data-i18n', 'toggle_help_hide');
+                btn.innerText = translations[currentLang]['toggle_help_hide'];
+            }
+        }
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+
+            // 更新按钮状态
+            document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active'));
+            document.getElementById(`lang-${lang}`).classList.add('active');
+
+            // 更新文本内容
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.innerText = translations[lang][key];
+                }
+            });
+
+            // 更新 Placeholder
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (translations[lang][key]) {
+                    el.placeholder = translations[lang][key];
+                }
+            });
+
+            // 更新当前动态状态文本 (如果处于 Ready 状态)
+            const btn = document.getElementById('submitBtn');
+            if (!btn.disabled) {
+                 if (btn.innerText === "Retry" || btn.innerText === "重试") {
+                     btn.innerText = translations[lang]['btn_retry'];
+                 } else {
+                     btn.innerText = translations[lang]['btn_init'];
+                 }
+            }
+        }
+
+        // 自动检测语言
+        function detectLanguage() {
+            const userLang = navigator.language || navigator.userLanguage;
+            if (userLang.includes('zh')) {
+                setLanguage('cn');
+            } else {
+                setLanguage('en');
+            }
+        }
+
+        // 辅助函数：获取当前语言的文本
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        // 自动刷新统计
+        function updateStats() {
+            fetch('/stats')
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) {
+                        document.getElementById('totalSuccess').innerText = data.stats.total_success;
+                    }
+                })
+                .catch(e => console.error("Stats error", e));
+        }
+
+        // 初始加载
+        updateStats();
+        detectLanguage();
+        // 每30秒刷新一次
+        setInterval(updateStats, 30000);
+
+        async function startVerification() {
+            const urlInput = document.getElementById('urlInput');
+            const btn = document.getElementById('submitBtn');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                alert(t('alert_link_req'));
+                return;
+            }
+
+            // 简单的格式检查
+            if (!url.startsWith('http')) {
+                alert(t('alert_invalid'));
+                return;
+            }
+
+            // UI Reset
+            btn.disabled = true;
+            btn.innerText = t('btn_processing');
+            urlInput.disabled = true;
+
+            statusText.innerText = t('status_init');
+            statusText.className = "status-text color-running";
+            statusDetail.innerText = t('detail_init');
+
+            try {
+                // 提交任务
+                // 强制配置: 无头=true, OBS=false (注入模式), 超时=300秒
+                const config = {
+                    url: url,
+                    use_obs: false,
+                    headless: true,
+                    timeout: 300,
+                    wait_for_completion: true,
+                    async: true
+                };
+
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const taskId = data.task_id;
+                    statusText.innerText = t('status_running');
+                    statusDetail.innerText = `${t('task_created')} (ID: ${taskId})`;
+
+                    // 开始轮询
+                    pollStatus(taskId);
+                } else {
+                    throw new Error(data.error || "Failed to create task");
+                }
+
+            } catch (error) {
+                handleError(error.message);
+            }
+        }
+
+        async function pollStatus(taskId) {
+            const statusDetail = document.getElementById('statusDetail');
+
+            try {
+                const response = await fetch(`/tasks/${taskId}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error("Status query failed");
+                }
+
+                const task = data.task;
+                const status = task.status;
+
+                // 更新详细信息
+                if (task.logs && task.logs.length > 0) {
+                    // 只显示最后一条日志
+                    const lastLog = task.logs[task.logs.length - 1];
+                    // 去掉时间戳，保持简洁
+                    const cleanLog = lastLog.replace(/^\[.*?\]\s*/, '');
+                    // 这里日志内容是后端返回的，暂时不翻译，保持原样显示
+                    statusDetail.innerText = cleanLog;
+                }
+
+                if (status === 'completed') {
+                    const success = task.result && task.result.success;
+                    handleCompletion(success, task.result ? task.result.message : "Completed");
+                    // 验证完成后刷新统计
+                    if (success) updateStats();
+                } else if (status === 'failed') {
+                    handleError(task.error || "Unknown system failure");
+                } else if (status === 'cancelled') {
+                    handleError("Task terminated manually");
+                } else {
+                    // 继续轮询
+                    setTimeout(() => pollStatus(taskId), 1000);
+                }
+
+            } catch (error) {
+                // 网络错误等，不立即失败，重试
+                console.error(error);
+                setTimeout(() => pollStatus(taskId), 2000);
+            }
+        }
+
+        function handleCompletion(success, message) {
+            const btn = document.getElementById('submitBtn');
+            const urlInput = document.getElementById('urlInput');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            btn.disabled = false;
+            btn.innerText = t('btn_init');
+            urlInput.disabled = false;
+            urlInput.value = ""; // 清空输入，准备下一次
+
+            if (success) {
+                statusText.innerText = t('status_success');
+                statusText.className = "status-text color-success";
+                // 成功消息可以使用翻译
+                statusDetail.innerText = t('detail_success');
+            } else {
+                statusText.innerText = t('status_failed');
+                statusText.className = "status-text color-failed";
+                statusDetail.innerText = message || t('detail_fail');
+            }
+        }
+
+        function handleError(msg) {
+            const btn = document.getElementById('submitBtn');
+            const urlInput = document.getElementById('urlInput');
+            const statusText = document.getElementById('statusText');
+            const statusDetail = document.getElementById('statusDetail');
+
+            statusText.innerText = t('status_error');
+            statusText.className = "status-text color-failed";
+            statusDetail.innerText = msg;
+
+            btn.disabled = false;
+            btn.innerText = t('btn_retry');
+            urlInput.disabled = false;
+        }
+    </script>
+</body>
+</html>

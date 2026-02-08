@@ -58,6 +58,7 @@ CLIENT_TOKEN_HEADER = "X-Client-Token"
 RATE_LIMIT_WINDOW_SECONDS = max(1, int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60")))
 RATE_LIMIT_MAX_REQUESTS = max(1, int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", "20")))
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
+ALLOW_LOCAL_BYPASS = os.environ.get("ALLOW_LOCAL_BYPASS", "true").strip().lower() in {"1", "true", "yes", "on"}
 PUBLIC_PATH_PREFIXES = ("/verify", "/tasks", "/batches", "/stats")
 USE_PROXY_HEADERS = os.environ.get("USE_PROXY_HEADERS", "false").strip().lower() in {"1", "true", "yes", "on"}
 TRUSTED_PROXY_IPS = {
@@ -89,9 +90,22 @@ def _get_client_ip() -> str:
 
 
 def _is_local_request() -> bool:
-    # 只基于 socket 对端地址判断本地，避免 Host/XFF 头伪造绕过。
+    # Local bypass should only work for local host + local IP.
+    if not ALLOW_LOCAL_BYPASS:
+        return False
+
     remote_ip = (request.remote_addr or "").strip()
-    return _is_loopback_ip(remote_ip)
+    if not _is_loopback_ip(remote_ip):
+        return False
+
+    host_header = (request.host or "").strip().lower()
+    if not host_header:
+        return False
+    if host_header.startswith("["):
+        host_only = host_header[1:].split("]", 1)[0]
+    else:
+        host_only = host_header.split(":", 1)[0]
+    return host_only in LOCAL_HOSTS
 
 
 def _build_client_fingerprint(ip: str, user_agent: str) -> str:

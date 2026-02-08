@@ -19,6 +19,7 @@ stats.json
 *.log
 
 # Test/coverage artifacts
+tests/
 .pytest_cache/
 .coverage
 .coverage.*

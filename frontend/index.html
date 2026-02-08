@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Age Verification</title>
+    <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -916,12 +917,26 @@
             clientTokenExpireAt = 0;
         }
 
-        async function ensureClientToken(turnstileToken = null) {
+        function getTurnstileResponse() {
+            try {
+                if (window.turnstile) {
+                    const token = window.turnstile.getResponse();
+                    return token || null;
+                }
+            } catch (_) { }
+            return null;
+        }
+
+        async function ensureClientToken(turnstileToken = null, options = {}) {
             if (isLikelyLocalHost()) return '';
 
             const now = Math.floor(Date.now() / 1000);
             if (clientToken && clientTokenExpireAt - now > 30) {
                 return clientToken;
+            }
+
+            if (!turnstileToken && options.allowNoToken) {
+                return '';
             }
 
             const response = await fetch(`${API_BASE_URL}/auth/client-token`, {
@@ -931,6 +946,9 @@
             });
             const data = await response.json();
             if (!response.ok || !data.success) {
+                if (options.allowNoToken && response.status === 403) {
+                    return '';
+                }
                 throw new Error(data.error || 'Failed to obtain client token');
             }
             clientToken = data.token || '';
@@ -940,21 +958,40 @@
 
         async function getHeaders(options = {}) {
             const headers = { 'Content-Type': 'application/json' };
-            const token = await ensureClientToken(options.turnstileToken || null);
+            const token = await ensureClientToken(options.turnstileToken || null, {
+                allowNoToken: !!options.allowNoToken
+            });
             if (token) headers['X-Client-Token'] = token;
             return headers;
         }
 
         function updateStats() {
-            getHeaders()
-                .then(headers => fetch(`${API_BASE_URL}/stats`, { headers }))
-                .then(r => r.json())
+            if (!isLikelyLocalHost()) {
+                const now = Math.floor(Date.now() / 1000);
+                const hasValidCache = !!clientToken && (clientTokenExpireAt - now > 30);
+                const turnstileToken = getTurnstileResponse();
+                if (!hasValidCache && !turnstileToken) {
+                    return;
+                }
+            }
+
+            getHeaders({
+                turnstileToken: getTurnstileResponse(),
+                allowNoToken: true
+            })
+                .then(headers => {
+                    if (!isLikelyLocalHost() && !headers['X-Client-Token']) {
+                        return null;
+                    }
+                    return fetch(`${API_BASE_URL}/stats`, { headers });
+                })
+                .then(r => r ? r.json() : null)
                 .then(data => {
-                    if (data.success) {
+                    if (data && data.success) {
                         document.getElementById('totalSuccess').innerText = data.stats.total_success;
                     }
                 })
-                .catch(e => console.error("Stats error", e));
+                .catch(() => { });
         }
 
         updateStats();

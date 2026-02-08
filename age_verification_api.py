@@ -45,7 +45,6 @@ FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
 # 允许使用 .env 管理部署配置
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='/static')
-CORS(app)
 
 import requests
 
@@ -64,11 +63,31 @@ USE_PROXY_HEADERS = os.environ.get("USE_PROXY_HEADERS", "false").strip().lower()
 TRUSTED_PROXY_IPS = {
     ip.strip() for ip in os.environ.get("TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
 }
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if CORS_ALLOWED_ORIGINS:
+    CORS(app, resources={r"/*": {"origins": CORS_ALLOWED_ORIGINS}})
 token_serializer = URLSafeTimedSerializer(CLIENT_TOKEN_SECRET, salt="age-verification-public-client")
 rate_limit_lock = threading.Lock()
 rate_limit_buckets: Dict[str, deque] = {}
 rate_limit_last_seen: Dict[str, float] = {}
 _rate_limit_gc_counter = 0
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "").strip().lower()
+    if request.is_secure or forwarded_proto == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 def _is_loopback_ip(ip: str) -> bool:
@@ -962,6 +981,8 @@ def get_batch_status(batch_id: str):
 
 
 @app.route('/devices', methods=['GET'])
+@require_rate_limit
+@require_api_key
 def list_devices():
     """列出可用的设备配置"""
     return jsonify({
@@ -978,6 +999,8 @@ def list_devices():
 
 
 @app.route('/health', methods=['GET'])
+@require_rate_limit
+@require_api_key
 def health_check():
     """健康检查"""
     prune_tasks()
@@ -1007,6 +1030,8 @@ def get_stats():
 
 
 @app.route('/api-docs', methods=['GET'])
+@require_rate_limit
+@require_api_key
 def api_docs():
     """API 文档"""
     return jsonify({

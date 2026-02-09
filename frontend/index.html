@@ -1001,6 +1001,9 @@
         let singlePollingTimer = null;
         let batchPollingTimer = null;
         let pollSessionId = 0;
+        const SINGLE_POLL_INTERVAL_MS = 3500;
+        const BATCH_POLL_INTERVAL_MS = 4000;
+        const ERROR_RETRY_INTERVAL_MS = 5000;
 
         function resetPolling() {
             pollSessionId += 1;
@@ -1026,9 +1029,20 @@
                     clearClientTokenCache();
                     throw new Error(t('alert_auth_fail'));
                 }
+                if (response.status === 429) {
+                    let retryDelayMs = 10000;
+                    try {
+                        const limitData = await response.json();
+                        const retryWindowSeconds = Number(limitData.retry_window_seconds || 10);
+                        retryDelayMs = Math.max(1000, retryWindowSeconds * 1000);
+                    } catch (_) { }
+                    statusDetail.innerText = `Rate limited. Retrying in ${Math.ceil(retryDelayMs / 1000)}s...`;
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), retryDelayMs);
+                    return;
+                }
                 const data = await response.json();
 
-                if (!data.success) {
+                if (!response.ok || !data.success) {
                     throw new Error("Status query failed");
                 }
 
@@ -1037,10 +1051,10 @@
 
                 if (status === 'pending') {
                     statusDetail.innerText = t('detail_queue');
-                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), SINGLE_POLL_INTERVAL_MS);
                 } else if (status === 'running') {
                     statusDetail.innerText = t('detail_running_simple');
-                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), SINGLE_POLL_INTERVAL_MS);
                 } else if (status === 'completed') {
                     const success = task.result && task.result.success;
                     handleCompletion(success, task.result ? task.result.message : "Completed");
@@ -1050,12 +1064,12 @@
                 } else if (status === 'cancelled') {
                     handleError("Task terminated manually");
                 } else {
-                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 1200);
+                    singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), SINGLE_POLL_INTERVAL_MS);
                 }
 
             } catch (error) {
                 console.error(error);
-                singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), 2000);
+                singlePollingTimer = setTimeout(() => pollStatus(taskId, sessionId), ERROR_RETRY_INTERVAL_MS);
             }
         }
 
@@ -1343,10 +1357,21 @@
                     clearClientTokenCache();
                     throw new Error(t('alert_auth_fail'));
                 }
+                if (response.status === 429) {
+                    let retryDelayMs = 10000;
+                    try {
+                        const limitData = await response.json();
+                        const retryWindowSeconds = Number(limitData.retry_window_seconds || 10);
+                        retryDelayMs = Math.max(1000, retryWindowSeconds * 1000);
+                    } catch (_) { }
+                    document.getElementById('batchProgressText').innerText = `Rate limited. Retrying in ${Math.ceil(retryDelayMs / 1000)}s...`;
+                    batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), retryDelayMs);
+                    return;
+                }
 
                 const data = await response.json();
 
-                if (!data.success) {
+                if (!response.ok || !data.success) {
                     throw new Error("Failed to get batch status");
                 }
 
@@ -1362,12 +1387,12 @@
                 if (data.is_finished) {
                     handleBatchCompletion(data);
                 } else {
-                    batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), 1500);
+                    batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), BATCH_POLL_INTERVAL_MS);
                 }
 
             } catch (error) {
                 console.error("Batch status error:", error);
-                batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), 3000);
+                batchPollingTimer = setTimeout(() => pollBatchStatus(batchId, sessionId), ERROR_RETRY_INTERVAL_MS);
             }
         }
 

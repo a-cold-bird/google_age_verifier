@@ -229,6 +229,9 @@ def require_rate_limit(f):
     def decorated_function(*args, **kwargs):
         if _is_local_request():
             return f(*args, **kwargs)
+        # Task polling endpoint is high-frequency by design; skip rate limit.
+        if request.method == "GET" and re.fullmatch(r"/tasks/[^/]+", request.path or ""):
+            return f(*args, **kwargs)
         bucket = _get_client_ip()
         if not _check_rate_limit(bucket):
             return jsonify({
@@ -613,12 +616,8 @@ def verify_single():
     """
     data = request.get_json() or {}
 
-    # Turnstile 验证
-    if not verify_turnstile(data.get('turnstile_token'), _get_client_ip()):
-        return jsonify({
-            "success": False,
-            "error": "CAPTCHA verification failed / 人机验证失败"
-        }), 403
+    # Public users are already challenged when issuing X-Client-Token.
+    # Avoid validating the same one-time Turnstile token twice.
 
     # 验证必需参数
     verification_url = data.get("url")
@@ -749,12 +748,8 @@ def verify_batch():
     """
     data = request.get_json() or {}
 
-    # Turnstile 验证
-    if not verify_turnstile(data.get('turnstile_token'), _get_client_ip()):
-        return jsonify({
-            "success": False,
-            "error": "CAPTCHA verification failed / 人机验证失败"
-        }), 403
+    # Public users are already challenged when issuing X-Client-Token.
+    # Avoid validating the same one-time Turnstile token twice.
 
     # 验证必需参数
     urls = data.get("urls", [])
